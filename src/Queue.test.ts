@@ -1,6 +1,6 @@
-import SimplyImitatedSQS from '@abetomo/simply-imitated-sqs';
 import { SQS } from 'aws-sdk';
 import { SQSx } from './';
+import { SQSMock } from 'sqs-mock';
 import { nanoid } from 'nanoid';
 
 const sqs =
@@ -9,7 +9,7 @@ const sqs =
 				region: 'us-east-1',
 				apiVersion: '2012-11-05'
 		  })
-		: (new SimplyImitatedSQS() as unknown as SQS);
+		: (new SQSMock() as any as SQS);
 
 interface ITestMessage {
 	test: string;
@@ -22,10 +22,20 @@ const queue = new SQSx.Queue<ITestMessage>({
 
 const message = { test: nanoid() };
 
-const batch = [{ message, params: { Id: '1' } }];
+const batch = [
+	{ message, params: { Id: '1' } },
+	{ message, params: { Id: '2' } },
+	{ message, params: { Id: '3' } }
+];
+
+const newBatch = [message, message, message];
+
+afterEach(async () => {
+	await queue.purge();
+});
 
 it('sends message', async () => {
-	await queue.send(message);
+	await new queue.Message(message).send();
 
 	const results = await sqs
 		.receiveMessage({
@@ -44,7 +54,7 @@ it('sends message', async () => {
 });
 
 it('sends message batch', async () => {
-	await queue.sendBatch(batch);
+	await new queue.Batch(newBatch).send();
 
 	const results = await sqs
 		.receiveMessage({
@@ -53,14 +63,25 @@ it('sends message batch', async () => {
 		})
 		.promise();
 
-	expect(results.Messages!.length).toBe(1);
+	expect(results.Messages!.length).toBe(3);
 
 	await sqs
-		.deleteMessage({
+		.deleteMessageBatch({
 			QueueUrl: queue.config.url,
-			ReceiptHandle: results.Messages![0].ReceiptHandle!
+			Entries: results.Messages!.map(message => ({
+				Id: message.MessageId!,
+				ReceiptHandle: message.ReceiptHandle!
+			}))
 		})
 		.promise();
+
+	const results2 = await sqs
+		.receiveMessage({
+			QueueUrl: queue.config.url
+		})
+		.promise();
+
+	expect(results2.Messages).toBeUndefined();
 });
 
 it('receives messages', async () => {
@@ -74,82 +95,98 @@ it('receives messages', async () => {
 		})
 		.promise();
 
-	const results = await queue.receive({
-		MaxNumberOfMessages: 10
-	});
+	const results = await queue.receive(10);
 
-	expect(results.Messages.length).toBe(1);
+	expect(results.messages.length).toBe(3);
 
 	await sqs
-		.deleteMessage({
+		.deleteMessageBatch({
 			QueueUrl: queue.config.url,
-			ReceiptHandle: results.Messages![0].ReceiptHandle!
+			Entries: results.rawMessages.map(message => ({
+				Id: message.MessageId!,
+				ReceiptHandle: message.ReceiptHandle!
+			}))
 		})
 		.promise();
+
+	const results2 = await sqs
+		.receiveMessage({
+			QueueUrl: queue.config.url
+		})
+		.promise();
+
+	expect(results2.Messages).toBeUndefined();
 });
 
-// it('deletes a message', async () => {
-// 	await sqs
-// 		.sendMessage({
-// 			QueueUrl: queue.config.url,
-// 			MessageBody: JSON.stringify(message)
-// 		})
-// 		.promise();
+it('deletes a message', async () => {
+	await sqs
+		.sendMessage({
+			QueueUrl: queue.config.url,
+			MessageBody: JSON.stringify(message)
+		})
+		.promise();
 
-// 	const results = await sqs
-// 		.receiveMessage({
-// 			QueueUrl: queue.config.url,
-// 			MaxNumberOfMessages: 10
-// 		})
-// 		.promise();
+	const results = await queue.receive(10);
 
-// 	expect(results.Messages!.length).toBe(1);
+	expect(results.messages.length).toBe(1);
 
-// 	await queue.delete(results.Messages![0].ReceiptHandle!);
+	await results.messages[0].delete();
 
-// 	const results2 = await sqs
-// 		.receiveMessage({
-// 			QueueUrl: queue.config.url,
-// 			MaxNumberOfMessages: 10
-// 		})
-// 		.promise();
+	const results2 = await sqs
+		.receiveMessage({
+			QueueUrl: queue.config.url
+		})
+		.promise();
 
-// 	expect(results2.Messages!.length).toBe(0);
-// });
+	expect(results2.Messages).toBeUndefined();
+});
 
-// it('deletes a message batch', async () => {
-// 	await sqs
-// 		.sendMessageBatch({
-// 			QueueUrl: queue.config.url,
-// 			Entries: batch.map(entry => ({
-// 				MessageBody: JSON.stringify(entry.message),
-// 				...entry.params
-// 			}))
-// 		})
-// 		.promise();
+it('deletes a message batch', async () => {
+	await sqs
+		.sendMessageBatch({
+			QueueUrl: queue.config.url,
+			Entries: batch.map(entry => ({
+				MessageBody: JSON.stringify(entry.message),
+				...entry.params
+			}))
+		})
+		.promise();
 
-// 	const results = await sqs
-// 		.receiveMessage({
-// 			QueueUrl: queue.config.url,
-// 			MaxNumberOfMessages: 10
-// 		})
-// 		.promise();
+	const results = await queue.receive(10);
 
-// 	expect(results.Messages!.length).toBe(1);
+	expect(results.messages.length).toBe(3);
 
-// 	await queue.deleteBatch(
-// 		results.Messages!.map(entry => ({
-// 			Id: entry.MessageId!,
-// 			ReceiptHandle: entry.ReceiptHandle!
-// 		}))
-// 	);
+	await results.delete();
 
-// 	const results2 = await sqs
-// 		.receiveMessage({
-// 			QueueUrl: queue.config.url,
-// 			MaxNumberOfMessages: 10
-// 		})
-// 		.promise();
+	const results2 = await sqs
+		.receiveMessage({
+			QueueUrl: queue.config.url,
+			MaxNumberOfMessages: 10
+		})
+		.promise();
 
-// 	expect(results2.Messages!.length).toBe(0);
-// });
+	expect(results2.Messages).toBeUndefined();
+});
+
+it('purges all messages', async () => {
+	await sqs
+		.sendMessageBatch({
+			QueueUrl: queue.config.url,
+			Entries: batch.map(entry => ({
+				MessageBody: JSON.stringify(entry.message),
+				...entry.params
+			}))
+		})
+		.promise();
+
+	await queue.purge();
+
+	const results = await sqs
+		.receiveMessage({
+			QueueUrl: queue.config.url,
+			MaxNumberOfMessages: 10
+		})
+		.promise();
+
+	expect(results.Messages).toBeUndefined();
+});

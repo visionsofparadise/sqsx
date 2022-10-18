@@ -1,6 +1,11 @@
+import { SQSEvent } from 'aws-lambda';
 import { SQS } from 'aws-sdk';
+import { Batch, BatchParamFunction } from './Batch';
+import { LambdaQueueBatch } from './LambdaQueueBatch';
+import { Message } from './Message';
+import { QueueBatch } from './QueueBatch';
 
-type NoQueueUrl<P extends { QueueUrl: string }> = Omit<P, 'QueueUrl'>;
+export type NoQueueUrl<P extends { QueueUrl: string }> = Omit<P, 'QueueUrl'>;
 
 export interface QCfg {
 	url: string;
@@ -9,62 +14,64 @@ export interface QCfg {
 
 export class Queue<QMA extends object> {
 	constructor(public config: QCfg) {
-		this.SQS = config.client;
+		this.sqs = config.client;
 	}
 
-	SQS: SQS;
+	sqs: SQS;
 
-	send = async (message: QMA, params?: NoQueueUrl<Omit<SQS.SendMessageRequest, 'MessageBody'>>) => {
-		const fallbackParams = params || {};
+	get Message() {
+		const parentQueue = this;
 
-		return this.SQS.sendMessage({
-			QueueUrl: this.config.url,
-			MessageBody: JSON.stringify(message),
-			...fallbackParams
-		}).promise();
-	};
+		return class QMessage extends Message<QMA> {
+			constructor(message: QMA) {
+				super(message, parentQueue);
+			}
+		};
+	}
 
-	sendBatch = async (entries: Array<{ message: QMA; params: Omit<SQS.SendMessageBatchRequestEntry, 'MessageBody'> }>) =>
-		this.SQS.sendMessageBatch({
-			QueueUrl: this.config.url,
-			Entries: entries.map(({ message, params }) => ({
-				MessageBody: JSON.stringify(message),
-				...params
-			}))
-		}).promise();
+	get Batch() {
+		const parentQueue = this;
+
+		return class QBatch extends Batch<QMA> {
+			constructor(messages: Array<QMA>, paramFunction?: BatchParamFunction<QMA>) {
+				super(messages, parentQueue, paramFunction);
+			}
+		};
+	}
+
+	get LambdaQueueBatch() {
+		const parentQueue = this;
+
+		return class QLambdaQueueBatch extends LambdaQueueBatch<QMA> {
+			constructor(sqsEvent: SQSEvent) {
+				super(sqsEvent, parentQueue);
+			}
+		};
+	}
 
 	receive = async (
-		params?: NoQueueUrl<SQS.ReceiveMessageRequest>
-	): Promise<{ Messages: Array<Omit<SQS.Message, 'Body'> & { Body: QMA }> }> => {
+		quantity: number = 1,
+		params?: NoQueueUrl<Omit<SQS.ReceiveMessageRequest, 'MaxNumberOfMessages'>>
+	): Promise<QueueBatch<QMA>> => {
 		const fallbackParams = params || {};
 
-		const result = await this.SQS.receiveMessage({
-			QueueUrl: this.config.url,
-			...fallbackParams
-		}).promise();
+		const result = await this.sqs
+			.receiveMessage({
+				QueueUrl: this.config.url,
+				...fallbackParams,
+				MaxNumberOfMessages: Math.min(quantity, 10)
+			})
+			.promise();
 
-		return {
-			Messages:
-				(result.Messages || []).map(message => {
-					const Body: QMA = message.Body ? JSON.parse(message.Body) : {};
+		const queueBatch = new QueueBatch<QMA>(result.Messages || [], this);
 
-					return {
-						...message,
-						Body
-					};
-				}) || []
-		};
+		return queueBatch;
 	};
 
-	delete = async (receiptHandle: SQS.DeleteMessageRequest['ReceiptHandle']) =>
-		this.SQS.deleteMessage({
-			QueueUrl: this.config.url,
-			ReceiptHandle: receiptHandle
-		}).promise();
-
-	deleteBatch = async (entries: Array<SQS.DeleteMessageBatchRequestEntry>) =>
-		this.SQS.deleteMessageBatch({
-			QueueUrl: this.config.url,
-			Entries: entries
-		}).promise();
+	purge = async () =>
+		this.sqs
+			.purgeQueue({
+				QueueUrl: this.config.url
+			})
+			.promise();
 }
