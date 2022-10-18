@@ -2,7 +2,7 @@
 	"name": "sqsx",
 	"version": "0.0.2",
 	"description": "",
-	"main": "index.js",
+	"main": "./dist/index.js",
 	"scripts": {
 		"compile": "tsc",
 		"test": "jest --run-in-band",
