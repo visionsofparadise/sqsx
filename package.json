@@ -10,9 +10,12 @@
 		"build": "npm run compile && npm run test && npm run patch",
 		"cdk": "cdk"
 	},
-	"dependencies": {},
+	"dependencies": {
+		"chunk": "0.0.3"
+	},
 	"devDependencies": {
 		"@types/aws-lambda": "^8.10.108",
+		"@types/chunk": "0.0.0",
 		"@types/jest": "^24.9.1",
 		"@types/node": "^13.13.25",
 		"aws-cdk": "^2.44.0",

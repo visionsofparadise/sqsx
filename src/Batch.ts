@@ -1,6 +1,8 @@
-import { SQS } from 'aws-sdk';
+import { AWSError, SQS } from 'aws-sdk';
 import { Queue } from './Queue';
 import { nanoid } from 'nanoid';
+import chunk from 'chunk';
+import { PromiseResult } from 'aws-sdk/lib/request';
 
 export type BatchParamFunction<QMA extends object> = (
 	message: QMA,
@@ -18,14 +20,24 @@ export class Batch<QMA extends object> {
 	}
 
 	send = async () => {
-		this.queue.sqs
-			.sendMessageBatch({
-				QueueUrl: this.queue.config.url,
-				Entries: this.messages.map((message, index) => ({
-					MessageBody: JSON.stringify(message),
-					...this.paramFunction(message, index)
-				}))
-			})
-			.promise();
+		const batches = chunk(this.messages, 10);
+
+		const results: Array<PromiseResult<SQS.SendMessageBatchResult, AWSError>> = [];
+
+		for (const batch of batches) {
+			const result = await this.queue.sqs
+				.sendMessageBatch({
+					QueueUrl: this.queue.config.url,
+					Entries: batch.map((message, index) => ({
+						MessageBody: JSON.stringify(message),
+						...this.paramFunction(message, index)
+					}))
+				})
+				.promise();
+
+			results.push(result);
+		}
+
+		return results;
 	};
 }
