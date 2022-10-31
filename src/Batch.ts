@@ -4,16 +4,16 @@ import { nanoid } from 'nanoid';
 import chunk from 'chunk';
 import { PromiseResult } from 'aws-sdk/lib/request';
 
-export type BatchParamFunction<QMA extends object> = (
-	message: QMA,
+export type BatchParamFunction<Body extends object> = (
+	message: Body,
 	index: number
 ) => Omit<SQS.SendMessageBatchRequestEntry, 'MessageBody'>;
 
-export class Batch<QMA extends object> {
-	queue: Queue<QMA>;
-	paramFunction: BatchParamFunction<QMA>;
+export class Batch<Body extends object> {
+	queue: Queue<Body>;
+	paramFunction: BatchParamFunction<Body>;
 
-	constructor(public messages: Array<QMA>, queue: Queue<QMA>, paramFunction?: BatchParamFunction<QMA>) {
+	constructor(public messages: Array<Body>, queue: Queue<Body>, paramFunction?: BatchParamFunction<Body>) {
 		this.queue = queue;
 
 		this.paramFunction = paramFunction || (() => ({ Id: nanoid() }));
