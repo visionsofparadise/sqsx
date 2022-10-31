@@ -1,7 +1,7 @@
 import { Queue } from './Queue';
 
-export const SQSx = {
+export const SQSX = {
 	Queue
 };
 
-export default SQSx;
+export default SQSX;

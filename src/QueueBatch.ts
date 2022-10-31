@@ -5,19 +5,17 @@ import { QueueMessage } from './QueueMessage';
 import chunk from 'chunk';
 import { PromiseResult } from 'aws-sdk/lib/request';
 
-export class QueueBatch<QMA extends object> {
-	messageData: Array<{ message: QueueMessage<QMA>; rawMessage: SQS.Message }>;
-	messages: Array<QueueMessage<QMA>>;
+export class QueueBatch<Body extends object> {
+	messages: Array<QueueMessage<Body>>;
 
-	constructor(public rawMessages: SQS.MessageList, public queue: Queue<QMA>) {
-		this.messageData = rawMessages.map(rawMessage => ({ message: new QueueMessage(rawMessage, queue), rawMessage }));
-		this.messages = rawMessages.map(rawMessage => new QueueMessage(rawMessage, queue));
+	constructor(public sqsMessages: SQS.MessageList, public queue: Queue<Body>) {
+		this.messages = sqsMessages.map(sqsMessage => new QueueMessage(sqsMessage, queue));
 	}
 
-	send = async (paramFunction?: BatchParamFunction<QMA>) => {
+	send = async (paramFunction?: BatchParamFunction<Body>) => {
 		const fallbackParamFunction = paramFunction || (() => {});
 
-		const batches = chunk(this.messageData, 10);
+		const batches = chunk(this.messages, 10);
 
 		const results: Array<PromiseResult<SQS.SendMessageBatchResult, AWSError>> = [];
 
@@ -25,10 +23,10 @@ export class QueueBatch<QMA extends object> {
 			const result = await this.queue.sqs
 				.sendMessageBatch({
 					QueueUrl: this.queue.config.url,
-					Entries: batch.map((messageData, index) => ({
-						Id: messageData.rawMessage.MessageId!,
-						MessageBody: messageData.rawMessage.Body!,
-						...fallbackParamFunction(messageData.message.message, index)
+					Entries: batch.map((message, index) => ({
+						Id: message.id,
+						MessageBody: message.serializedBody,
+						...fallbackParamFunction(message.body, index)
 					}))
 				})
 				.promise();
@@ -40,7 +38,7 @@ export class QueueBatch<QMA extends object> {
 	};
 
 	delete = async () => {
-		const batches = chunk(this.messageData, 10);
+		const batches = chunk(this.messages, 10);
 
 		const results: Array<PromiseResult<SQS.DeleteMessageBatchResult, AWSError>> = [];
 
@@ -48,9 +46,9 @@ export class QueueBatch<QMA extends object> {
 			const result = await this.queue.sqs
 				.deleteMessageBatch({
 					QueueUrl: this.queue.config.url,
-					Entries: batch.map(messageData => ({
-						Id: messageData.rawMessage.MessageId!,
-						ReceiptHandle: messageData.rawMessage.ReceiptHandle!
+					Entries: batch.map(message => ({
+						Id: message.id,
+						ReceiptHandle: message.receiptHandle
 					}))
 				})
 				.promise();

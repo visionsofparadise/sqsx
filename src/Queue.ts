@@ -12,7 +12,7 @@ export interface QCfg {
 	client: SQS;
 }
 
-export class Queue<QMA extends object> {
+export class Queue<Body extends object> {
 	constructor(public config: QCfg) {
 		this.sqs = config.client;
 	}
@@ -22,8 +22,8 @@ export class Queue<QMA extends object> {
 	get Message() {
 		const parentQueue = this;
 
-		return class QMessage extends Message<QMA> {
-			constructor(message: QMA) {
+		return class QMessage extends Message<Body> {
+			constructor(message: Body) {
 				super(message, parentQueue);
 			}
 		};
@@ -32,8 +32,8 @@ export class Queue<QMA extends object> {
 	get Batch() {
 		const parentQueue = this;
 
-		return class QBatch extends Batch<QMA> {
-			constructor(messages: Array<QMA>, paramFunction?: BatchParamFunction<QMA>) {
+		return class QBatch extends Batch<Body> {
+			constructor(messages: Array<Body>, paramFunction?: BatchParamFunction<Body>) {
 				super(messages, parentQueue, paramFunction);
 			}
 		};
@@ -42,9 +42,9 @@ export class Queue<QMA extends object> {
 	get LambdaQueueBatch() {
 		const parentQueue = this;
 
-		return class QLambdaQueueBatch extends LambdaQueueBatch<QMA> {
-			constructor(sqsEvent: SQSEvent) {
-				super(sqsEvent, parentQueue);
+		return class QLambdaQueueBatch extends LambdaQueueBatch<Body> {
+			constructor(records: SQSEvent['Records']) {
+				super(records, parentQueue);
 			}
 		};
 	}
@@ -52,7 +52,7 @@ export class Queue<QMA extends object> {
 	receive = async (
 		quantity: number = 1,
 		params?: NoQueueUrl<Omit<SQS.ReceiveMessageRequest, 'MaxNumberOfMessages'>>
-	): Promise<QueueBatch<QMA>> => {
+	): Promise<QueueBatch<Body>> => {
 		const fallbackParams = params || {};
 
 		const result = await this.sqs
@@ -63,7 +63,7 @@ export class Queue<QMA extends object> {
 			})
 			.promise();
 
-		const queueBatch = new QueueBatch<QMA>(result.Messages || [], this);
+		const queueBatch = new QueueBatch<Body>(result.Messages || [], this);
 
 		return queueBatch;
 	};

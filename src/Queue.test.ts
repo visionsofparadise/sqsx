@@ -1,5 +1,5 @@
 import { SQS } from 'aws-sdk';
-import { SQSx } from './';
+import { SQSX } from './';
 import { SQSMock } from 'sqs-mock';
 import { nanoid } from 'nanoid';
 
@@ -15,7 +15,7 @@ interface ITestMessage {
 	test: string;
 }
 
-const queue = new SQSx.Queue<ITestMessage>({
+const queue = new SQSX.Queue<ITestMessage>({
 	url: process.env.QUEUE_URL || `test`,
 	client: sqs
 });
@@ -102,9 +102,9 @@ it('receives messages', async () => {
 	await sqs
 		.deleteMessageBatch({
 			QueueUrl: queue.config.url,
-			Entries: results.rawMessages.map(message => ({
-				Id: message.MessageId!,
-				ReceiptHandle: message.ReceiptHandle!
+			Entries: results.messages.map(message => ({
+				Id: message.id,
+				ReceiptHandle: message.receiptHandle
 			}))
 		})
 		.promise();
