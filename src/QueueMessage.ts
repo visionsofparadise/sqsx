@@ -9,8 +9,8 @@ export class QueueMessage<Body extends object> extends Message<Body> {
 	serializedBody: NonNullable<SQS.Message['Body']>;
 	md5OfBody: NonNullable<SQS.Message['MD5OfBody']>;
 
-	attributes: NonNullable<SQS.Message['Attributes']>;
-	messageAttributes: NonNullable<SQS.Message['MessageAttributes']>;
+	attributes: SQS.Message['Attributes'];
+	messageAttributes: SQS.Message['MessageAttributes'];
 	md5OfMessageAttribtes: SQS.Message['MD5OfMessageAttributes'];
 
 	constructor(sqsMessage: SQS.Message, queue: Queue<Body>) {
@@ -22,9 +22,6 @@ export class QueueMessage<Body extends object> extends Message<Body> {
 		isNonNullable(sqsMessage.ReceiptHandle, 'receiptHandle');
 		isNonNullable(sqsMessage.Body, 'body');
 		isNonNullable(sqsMessage.MD5OfBody, 'md5OfBody');
-
-		isNonNullable(sqsMessage.Attributes, 'attributes');
-		isNonNullable(sqsMessage.MessageAttributes, 'messageAttributes');
 
 		this.id = sqsMessage.MessageId;
 		this.receiptHandle = sqsMessage.ReceiptHandle;
