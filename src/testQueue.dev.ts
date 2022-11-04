@@ -9,7 +9,7 @@ export const sqs =
 				region: 'us-east-1',
 				apiVersion: '2012-11-05'
 		  })
-		: (new SQSMock() as any as SQS);
+		: new SQSMock();
 
 export interface ITestMessage {
 	test: string;

@@ -1,8 +1,7 @@
-import { AWSError, SQS } from 'aws-sdk';
+import { SQS } from 'aws-sdk';
 import { Queue } from './Queue';
 import { nanoid } from 'nanoid';
 import chunk from 'chunk';
-import { PromiseResult } from 'aws-sdk/lib/request';
 
 export type BatchParamFunction<Body extends object> = (
 	message: Body,
@@ -22,7 +21,7 @@ export class Batch<Body extends object> {
 	send = async () => {
 		const batches = chunk(this.messages, 10);
 
-		const results: Array<PromiseResult<SQS.SendMessageBatchResult, AWSError>> = [];
+		const results: Array<SQS.SendMessageBatchResult> = [];
 
 		for (const batch of batches) {
 			const result = await this.queue.sqs

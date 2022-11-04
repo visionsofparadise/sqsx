@@ -1,9 +1,8 @@
-import { AWSError, SQS } from 'aws-sdk';
+import { SQS } from 'aws-sdk';
 import { BatchParamFunction } from './Batch';
 import { Queue } from './Queue';
 import { QueueMessage } from './QueueMessage';
 import chunk from 'chunk';
-import { PromiseResult } from 'aws-sdk/lib/request';
 
 export class QueueBatch<Body extends object> {
 	messages: Array<QueueMessage<Body>>;
@@ -17,7 +16,7 @@ export class QueueBatch<Body extends object> {
 
 		const batches = chunk(this.messages, 10);
 
-		const results: Array<PromiseResult<SQS.SendMessageBatchResult, AWSError>> = [];
+		const results: Array<SQS.SendMessageBatchResult> = [];
 
 		for (const batch of batches) {
 			const result = await this.queue.sqs
@@ -40,7 +39,7 @@ export class QueueBatch<Body extends object> {
 	delete = async () => {
 		const batches = chunk(this.messages, 10);
 
-		const results: Array<PromiseResult<SQS.DeleteMessageBatchResult, AWSError>> = [];
+		const results: Array<SQS.DeleteMessageBatchResult> = [];
 
 		for (const batch of batches) {
 			const result = await this.queue.sqs

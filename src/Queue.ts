@@ -1,5 +1,6 @@
 import { SQSEvent } from 'aws-lambda';
 import { SQS } from 'aws-sdk';
+import { SQSMock } from 'sqs-mock';
 import { Batch, BatchParamFunction } from './Batch';
 import { LambdaQueueBatch } from './LambdaQueueBatch';
 import { Message } from './Message';
@@ -9,7 +10,7 @@ export type NoQueueUrl<P extends { QueueUrl: string }> = Omit<P, 'QueueUrl'>;
 
 export interface QCfg {
 	url: string;
-	client: SQS;
+	client: SQS | SQSMock;
 }
 
 export class Queue<Body extends object> {
@@ -17,7 +18,7 @@ export class Queue<Body extends object> {
 		this.sqs = config.client;
 	}
 
-	sqs: SQS;
+	sqs: SQS | SQSMock;
 
 	get Message() {
 		const parentQueue = this;
