@@ -7,12 +7,14 @@ export class Message<Body extends object> {
 	send = async (params?: NoQueueUrl<Omit<SQS.SendMessageRequest, 'MessageBody'>>) => {
 		const fallbackParams = params || {};
 
-		return this.queue.sqs
-			.sendMessage({
-				QueueUrl: this.queue.config.url,
-				MessageBody: JSON.stringify(this.body),
-				...fallbackParams
-			})
-			.promise();
+		const sendParams = {
+			QueueUrl: this.queue.config.url,
+			MessageBody: JSON.stringify(this.body),
+			...fallbackParams
+		};
+
+		if (this.queue.config.logger) this.queue.config.logger.info({ sendParams });
+
+		return this.queue.sqs.sendMessage(sendParams).promise();
 	};
 }

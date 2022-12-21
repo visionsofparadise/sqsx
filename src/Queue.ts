@@ -5,12 +5,14 @@ import { Batch, BatchParamFunction } from './Batch';
 import { LambdaQueueBatch } from './LambdaQueueBatch';
 import { Message } from './Message';
 import { QueueBatch } from './QueueBatch';
+import { ILogger } from './util';
 
 export type NoQueueUrl<P extends { QueueUrl: string }> = Omit<P, 'QueueUrl'>;
 
 export interface QCfg {
 	url: string;
 	client: SQS | SQSMock;
+	logger?: ILogger;
 }
 
 export class Queue<Body extends object> {
@@ -63,6 +65,8 @@ export class Queue<Body extends object> {
 				MaxNumberOfMessages: Math.min(quantity, 10)
 			})
 			.promise();
+
+		if (this.config.logger) this.config.logger.info({ result });
 
 		const queueBatch = new QueueBatch<Body>(result.Messages || [], this);
 

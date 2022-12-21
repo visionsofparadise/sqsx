@@ -33,11 +33,14 @@ export class QueueMessage<Body extends object> extends Message<Body> {
 		this.md5OfMessageAttribtes = sqsMessage.MD5OfMessageAttributes;
 	}
 
-	delete = async () =>
+	delete = async () => {
+		if (this.queue.config.logger) this.queue.config.logger.info(`Deleting ${this.receiptHandle}`);
+
 		this.queue.sqs
 			.deleteMessage({
 				QueueUrl: this.queue.config.url,
 				ReceiptHandle: this.receiptHandle
 			})
 			.promise();
+	};
 }

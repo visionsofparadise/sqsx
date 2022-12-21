@@ -16,6 +16,8 @@ export class QueueBatch<Body extends object> {
 
 		const batches = chunk(this.messages, 10);
 
+		if (this.queue.config.logger) this.queue.config.logger.info({ batches });
+
 		const results: Array<SQS.SendMessageBatchResult> = [];
 
 		for (const batch of batches) {
@@ -38,6 +40,8 @@ export class QueueBatch<Body extends object> {
 
 	delete = async () => {
 		const batches = chunk(this.messages, 10);
+
+		if (this.queue.config.logger) this.queue.config.logger.info({ batches });
 
 		const results: Array<SQS.DeleteMessageBatchResult> = [];
 

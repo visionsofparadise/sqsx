@@ -21,6 +21,8 @@ export class Batch<Body extends object> {
 	send = async () => {
 		const batches = chunk(this.messages, 10);
 
+		if (this.queue.config.logger) this.queue.config.logger.info({ batches });
+
 		const results: Array<SQS.SendMessageBatchResult> = [];
 
 		for (const batch of batches) {
