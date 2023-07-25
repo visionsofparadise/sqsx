@@ -1,6 +1,5 @@
 import { Queue } from './Queue';
 import { nanoid } from 'nanoid';
-import chunk from 'chunk';
 import {
 	SendMessageBatchCommand,
 	SendMessageBatchCommandInput,
@@ -23,25 +22,28 @@ export class Batch<Body extends object> {
 	}
 
 	send = async () => {
-		const batches = chunk(this.messages, 10);
+		const recurse = async (remainingMessages: Array<Body>): Promise<Array<SendMessageBatchCommandOutput>> => {
+			const currentMessages = remainingMessages.slice(0, 10);
+			const nextMessages = remainingMessages.slice(10);
 
-		if (this.queue.config.logger) this.queue.config.logger.info({ batches });
-
-		const results: Array<SendMessageBatchCommandOutput> = [];
-
-		for (const batch of batches) {
 			const result = await this.queue.client.send(
 				new SendMessageBatchCommand({
 					QueueUrl: this.queue.config.url,
-					Entries: batch.map((message, index) => ({
+					Entries: currentMessages.map((message, index) => ({
 						MessageBody: JSON.stringify(message),
 						...this.paramFunction(message, index)
 					}))
 				})
 			);
 
-			results.push(result);
-		}
+			if (nextMessages.length === 0) return [result];
+
+			return [result, ...(await recurse(nextMessages))];
+		};
+
+		const results = await recurse(this.messages);
+
+		if (this.queue.config.logger) this.queue.config.logger.info({ results });
 
 		return results;
 	};

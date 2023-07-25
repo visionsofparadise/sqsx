@@ -8,7 +8,6 @@ import {
 import { BatchParamFunction } from './Batch';
 import { Queue } from './Queue';
 import { QueueMessage } from './QueueMessage';
-import chunk from 'chunk';
 
 export class QueueBatch<Body extends object> {
 	messages: Array<QueueMessage<Body>>;
@@ -20,17 +19,16 @@ export class QueueBatch<Body extends object> {
 	send = async (paramFunction?: BatchParamFunction<Body>) => {
 		const fallbackParamFunction = paramFunction || (() => {});
 
-		const batches = chunk(this.messages, 10);
+		const recurse = async (
+			remainingMessages: Array<QueueMessage<Body>>
+		): Promise<Array<SendMessageBatchCommandOutput>> => {
+			const currentMessages = remainingMessages.slice(0, 10);
+			const nextMessages = remainingMessages.slice(10);
 
-		if (this.queue.config.logger) this.queue.config.logger.info({ batches });
-
-		const results: Array<SendMessageBatchCommandOutput> = [];
-
-		for (const batch of batches) {
 			const result = await this.queue.client.send(
 				new SendMessageBatchCommand({
 					QueueUrl: this.queue.config.url,
-					Entries: batch.map((message, index) => ({
+					Entries: currentMessages.map((message, index) => ({
 						Id: message.id,
 						MessageBody: message.serializedBody,
 						...fallbackParamFunction(message.body, index)
@@ -38,32 +36,43 @@ export class QueueBatch<Body extends object> {
 				})
 			);
 
-			results.push(result);
-		}
+			if (nextMessages.length === 0) return [result];
+
+			return [result, ...(await recurse(nextMessages))];
+		};
+
+		const results = await recurse(this.messages);
+
+		if (this.queue.config.logger) this.queue.config.logger.info({ results });
 
 		return results;
 	};
 
 	delete = async () => {
-		const batches = chunk(this.messages, 10);
+		const recurse = async (
+			remainingMessages: Array<QueueMessage<Body>>
+		): Promise<Array<DeleteMessageBatchCommandOutput>> => {
+			const currentMessages = remainingMessages.slice(0, 10);
+			const nextMessages = remainingMessages.slice(10);
 
-		if (this.queue.config.logger) this.queue.config.logger.info({ batches });
-
-		const results: Array<DeleteMessageBatchCommandOutput> = [];
-
-		for (const batch of batches) {
 			const result = await this.queue.client.send(
 				new DeleteMessageBatchCommand({
 					QueueUrl: this.queue.config.url,
-					Entries: batch.map(message => ({
+					Entries: currentMessages.map(message => ({
 						Id: message.id,
 						ReceiptHandle: message.receiptHandle
 					}))
 				})
 			);
 
-			results.push(result);
-		}
+			if (nextMessages.length === 0) return [result];
+
+			return [result, ...(await recurse(nextMessages))];
+		};
+
+		const results = await recurse(this.messages);
+
+		if (this.queue.config.logger) this.queue.config.logger.info({ results });
 
 		return results;
 	};
