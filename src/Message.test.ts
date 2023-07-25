@@ -1,3 +1,4 @@
+import { ReceiveMessageCommand } from '@aws-sdk/client-sqs';
 import { Message } from './Message';
 import { sqs, testQueue, newTestMessage } from './testQueue.dev';
 
@@ -10,11 +11,11 @@ it('sends message', async () => {
 
 	await new Message(testMessage, testQueue).send();
 
-	const results = await sqs
-		.receiveMessage({
+	const results = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url
 		})
-		.promise();
+	);
 
 	expect(results.Messages!.length).toBe(1);
 });

@@ -1,4 +1,10 @@
-import { SQS } from 'aws-sdk';
+import {
+	DeleteMessageBatchCommand,
+	DeleteMessageBatchCommandOutput,
+	Message as SQSMessage,
+	SendMessageBatchCommand,
+	SendMessageBatchCommandOutput
+} from '@aws-sdk/client-sqs';
 import { BatchParamFunction } from './Batch';
 import { Queue } from './Queue';
 import { QueueMessage } from './QueueMessage';
@@ -7,7 +13,7 @@ import chunk from 'chunk';
 export class QueueBatch<Body extends object> {
 	messages: Array<QueueMessage<Body>>;
 
-	constructor(public sqsMessages: SQS.MessageList, public queue: Queue<Body>) {
+	constructor(public sqsMessages: Array<SQSMessage>, public queue: Queue<Body>) {
 		this.messages = sqsMessages.map(sqsMessage => new QueueMessage(sqsMessage, queue));
 	}
 
@@ -18,11 +24,11 @@ export class QueueBatch<Body extends object> {
 
 		if (this.queue.config.logger) this.queue.config.logger.info({ batches });
 
-		const results: Array<SQS.SendMessageBatchResult> = [];
+		const results: Array<SendMessageBatchCommandOutput> = [];
 
 		for (const batch of batches) {
-			const result = await this.queue.sqs
-				.sendMessageBatch({
+			const result = await this.queue.client.send(
+				new SendMessageBatchCommand({
 					QueueUrl: this.queue.config.url,
 					Entries: batch.map((message, index) => ({
 						Id: message.id,
@@ -30,7 +36,7 @@ export class QueueBatch<Body extends object> {
 						...fallbackParamFunction(message.body, index)
 					}))
 				})
-				.promise();
+			);
 
 			results.push(result);
 		}
@@ -43,18 +49,18 @@ export class QueueBatch<Body extends object> {
 
 		if (this.queue.config.logger) this.queue.config.logger.info({ batches });
 
-		const results: Array<SQS.DeleteMessageBatchResult> = [];
+		const results: Array<DeleteMessageBatchCommandOutput> = [];
 
 		for (const batch of batches) {
-			const result = await this.queue.sqs
-				.deleteMessageBatch({
+			const result = await this.queue.client.send(
+				new DeleteMessageBatchCommand({
 					QueueUrl: this.queue.config.url,
 					Entries: batch.map(message => ({
 						Id: message.id,
 						ReceiptHandle: message.receiptHandle
 					}))
 				})
-				.promise();
+			);
 
 			results.push(result);
 		}

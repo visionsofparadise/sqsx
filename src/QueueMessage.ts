@@ -1,19 +1,19 @@
-import { SQS } from 'aws-sdk';
 import { Message } from './Message';
 import { Queue } from './Queue';
 import { isNonNullable } from './util';
+import { DeleteMessageCommand, Message as SQSMessage } from '@aws-sdk/client-sqs';
 
 export class QueueMessage<Body extends object> extends Message<Body> {
-	id: NonNullable<SQS.Message['MessageId']>;
-	receiptHandle: NonNullable<SQS.Message['ReceiptHandle']>;
-	serializedBody: NonNullable<SQS.Message['Body']>;
-	md5OfBody: NonNullable<SQS.Message['MD5OfBody']>;
+	id: NonNullable<SQSMessage['MessageId']>;
+	receiptHandle: NonNullable<SQSMessage['ReceiptHandle']>;
+	serializedBody: NonNullable<SQSMessage['Body']>;
+	md5OfBody: NonNullable<SQSMessage['MD5OfBody']>;
 
-	attributes: SQS.Message['Attributes'];
-	messageAttributes: SQS.Message['MessageAttributes'];
-	md5OfMessageAttribtes: SQS.Message['MD5OfMessageAttributes'];
+	attributes: SQSMessage['Attributes'];
+	messageAttributes: SQSMessage['MessageAttributes'];
+	md5OfMessageAttribtes: SQSMessage['MD5OfMessageAttributes'];
 
-	constructor(sqsMessage: SQS.Message, queue: Queue<Body>) {
+	constructor(sqsMessage: SQSMessage, queue: Queue<Body>) {
 		const body: Body = sqsMessage.Body ? JSON.parse(sqsMessage.Body) : {};
 
 		super(body, queue);
@@ -36,11 +36,11 @@ export class QueueMessage<Body extends object> extends Message<Body> {
 	delete = async () => {
 		if (this.queue.config.logger) this.queue.config.logger.info(`Deleting ${this.receiptHandle}`);
 
-		this.queue.sqs
-			.deleteMessage({
+		this.queue.client.send(
+			new DeleteMessageCommand({
 				QueueUrl: this.queue.config.url,
 				ReceiptHandle: this.receiptHandle
 			})
-			.promise();
+		);
 	};
 }

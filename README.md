@@ -1,6 +1,6 @@
 # sqsx
 
-A wrapper for the SQS client from AWS-SDK that provides better typescript support and APIs for scalable usage. Compatible with [sqs-mock](https://www.npmjs.com/package/sqs-mock) for testing.
+A wrapper for the aws-sdk-v3 SQS client that provides better typescript support and APIs for scalable usage. Compatible with [sqs-mock](https://www.npmjs.com/package/sqs-mock) for testing.
 
 - Takes objects and returns objects of the type provided at queue definition.
 - Serializing and deserializing is internal.
@@ -21,10 +21,10 @@ A wrapper for the SQS client from AWS-SDK that provides better typescript suppor
 
 ```js
 // testQueue.ts
-import { SQS } from 'aws-sdk';
+import { SQSClient } from '@aws-sdk/client-sqs';
 import { SQSX } from 'sqsx';
 
-const sqs = new SQS();
+const sqs = new SQSClient();
 
 interface ITestMessage {
  test: string;
@@ -94,7 +94,3 @@ import { testQueue } from './testQueue';
 
 await testQueue.purge();
 ```
-
-## Contribution
-
-Feel free to contribute any missing features or bug fixes. Please provide unit tests for added functionality.

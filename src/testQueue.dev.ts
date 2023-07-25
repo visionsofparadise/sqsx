@@ -1,15 +1,15 @@
-import { SQS } from 'aws-sdk';
+import { SQSClient } from '@aws-sdk/client-sqs';
 import { SQSX } from './';
 import { SQSMock } from 'sqs-mock';
 import { nanoid } from 'nanoid';
 
 export const sqs =
 	process.env.INTEGRATION === 'true'
-		? new SQS({
+		? new SQSClient({
 				region: 'us-east-1',
 				apiVersion: '2012-11-05'
 		  })
-		: new SQSMock();
+		: (new SQSMock() as any as SQSClient);
 
 export interface ITestMessage {
 	test: string;

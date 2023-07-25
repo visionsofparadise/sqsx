@@ -1,3 +1,4 @@
+import { ReceiveMessageCommand } from '@aws-sdk/client-sqs';
 import { Batch } from './Batch';
 import { sqs, testQueue, newTestBatch } from './testQueue.dev';
 
@@ -10,12 +11,12 @@ it('sends message batch', async () => {
 
 	await new Batch(testBatch, testQueue).send();
 
-	const results = await sqs
-		.receiveMessage({
+	const results = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MaxNumberOfMessages: 10
 		})
-		.promise();
+	);
 
 	expect(results.Messages!.length).toBe(3);
 });

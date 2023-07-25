@@ -1,5 +1,6 @@
 import { nanoid } from 'nanoid';
 import { sqs, testQueue, newTestBatch } from './testQueue.dev';
+import { ReceiveMessageCommand, SendMessageBatchCommand } from '@aws-sdk/client-sqs';
 
 afterEach(async () => {
 	await testQueue.purge();
@@ -8,15 +9,15 @@ afterEach(async () => {
 it('receives messages', async () => {
 	const testBatch = newTestBatch();
 
-	await sqs
-		.sendMessageBatch({
+	await sqs.send(
+		new SendMessageBatchCommand({
 			QueueUrl: testQueue.config.url,
 			Entries: testBatch.map(entry => ({
 				Id: nanoid(),
 				MessageBody: JSON.stringify(entry)
 			}))
 		})
-		.promise();
+	);
 
 	const results = await testQueue.receive(10);
 
@@ -26,24 +27,24 @@ it('receives messages', async () => {
 it('purges all messages', async () => {
 	const testBatch = newTestBatch();
 
-	await sqs
-		.sendMessageBatch({
+	await sqs.send(
+		new SendMessageBatchCommand({
 			QueueUrl: testQueue.config.url,
 			Entries: testBatch.map(entry => ({
 				Id: nanoid(),
 				MessageBody: JSON.stringify(entry)
 			}))
 		})
-		.promise();
+	);
 
 	await testQueue.purge();
 
-	const results = await sqs
-		.receiveMessage({
+	const results = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MaxNumberOfMessages: 10
 		})
-		.promise();
+	);
 
 	expect(results.Messages).toBeUndefined();
 });

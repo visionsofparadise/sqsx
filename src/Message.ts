@@ -1,10 +1,10 @@
-import { SQS } from 'aws-sdk';
+import { SendMessageCommand, SendMessageCommandInput } from '@aws-sdk/client-sqs';
 import { NoQueueUrl, Queue } from './Queue';
 
 export class Message<Body extends object> {
 	constructor(public body: Body, public queue: Queue<Body>) {}
 
-	send = async (params?: NoQueueUrl<Omit<SQS.SendMessageRequest, 'MessageBody'>>) => {
+	send = async (params?: NoQueueUrl<Omit<SendMessageCommandInput, 'MessageBody'>>) => {
 		const fallbackParams = params || {};
 
 		const sendParams = {
@@ -15,6 +15,6 @@ export class Message<Body extends object> {
 
 		if (this.queue.config.logger) this.queue.config.logger.info({ sendParams });
 
-		return this.queue.sqs.sendMessage(sendParams).promise();
+		return this.queue.client.send(new SendMessageCommand(sendParams));
 	};
 }

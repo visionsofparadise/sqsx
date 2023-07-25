@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import { QueueBatch } from './QueueBatch';
 import { sqs, testQueue, newTestBatch } from './testQueue.dev';
+import { ReceiveMessageCommand, SendMessageBatchCommand } from '@aws-sdk/client-sqs';
 
 afterEach(async () => {
 	await testQueue.purge();
@@ -9,22 +10,22 @@ afterEach(async () => {
 it('deletes a message batch', async () => {
 	const testBatch = newTestBatch();
 
-	await sqs
-		.sendMessageBatch({
+	await sqs.send(
+		new SendMessageBatchCommand({
 			QueueUrl: testQueue.config.url,
 			Entries: testBatch.map(entry => ({
 				Id: nanoid(),
 				MessageBody: JSON.stringify(entry)
 			}))
 		})
-		.promise();
+	);
 
-	const results = await sqs
-		.receiveMessage({
+	const results = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MaxNumberOfMessages: 10
 		})
-		.promise();
+	);
 
 	expect(results.Messages!.length).toBe(3);
 
@@ -32,12 +33,12 @@ it('deletes a message batch', async () => {
 
 	await queueBatch.delete();
 
-	const results2 = await sqs
-		.receiveMessage({
+	const results2 = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MaxNumberOfMessages: 10
 		})
-		.promise();
+	);
 
 	expect(results2.Messages).toBeUndefined();
 });
@@ -45,22 +46,22 @@ it('deletes a message batch', async () => {
 it('resends same message batch', async () => {
 	const testBatch = newTestBatch();
 
-	await sqs
-		.sendMessageBatch({
+	await sqs.send(
+		new SendMessageBatchCommand({
 			QueueUrl: testQueue.config.url,
 			Entries: testBatch.map(entry => ({
 				Id: nanoid(),
 				MessageBody: JSON.stringify(entry)
 			}))
 		})
-		.promise();
+	);
 
-	const results = await sqs
-		.receiveMessage({
+	const results = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MaxNumberOfMessages: 10
 		})
-		.promise();
+	);
 
 	expect(results.Messages!.length).toBe(3);
 
@@ -68,12 +69,12 @@ it('resends same message batch', async () => {
 
 	await queueBatch.send();
 
-	const results2 = await sqs
-		.receiveMessage({
+	const results2 = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MaxNumberOfMessages: 10
 		})
-		.promise();
+	);
 
 	expect(results2.Messages!.length).toBe(6);
 });

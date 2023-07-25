@@ -1,26 +1,25 @@
 import { SQSEvent } from 'aws-lambda';
-import { SQS } from 'aws-sdk';
-import { SQSMock } from 'sqs-mock';
 import { Batch, BatchParamFunction } from './Batch';
 import { LambdaQueueBatch } from './LambdaQueueBatch';
 import { Message } from './Message';
 import { QueueBatch } from './QueueBatch';
 import { ILogger } from './util';
+import { PurgeQueueCommand, ReceiveMessageCommand, ReceiveMessageCommandInput, SQSClient } from '@aws-sdk/client-sqs';
 
-export type NoQueueUrl<P extends { QueueUrl: string }> = Omit<P, 'QueueUrl'>;
+export type NoQueueUrl<P extends { QueueUrl: string | undefined }> = Omit<P, 'QueueUrl'>;
 
 export interface QCfg {
 	url: string;
-	client: SQS | SQSMock;
+	client: SQSClient;
 	logger?: ILogger;
 }
 
 export class Queue<Body extends object> {
 	constructor(public config: QCfg) {
-		this.sqs = config.client;
+		this.client = config.client;
 	}
 
-	sqs: SQS | SQSMock;
+	client: SQSClient;
 
 	get Message() {
 		const parentQueue = this;
@@ -54,17 +53,17 @@ export class Queue<Body extends object> {
 
 	receive = async (
 		quantity: number = 1,
-		params?: NoQueueUrl<Omit<SQS.ReceiveMessageRequest, 'MaxNumberOfMessages'>>
+		params?: NoQueueUrl<Omit<ReceiveMessageCommandInput, 'MaxNumberOfMessages'>>
 	): Promise<QueueBatch<Body>> => {
 		const fallbackParams = params || {};
 
-		const result = await this.sqs
-			.receiveMessage({
+		const result = await this.client.send(
+			new ReceiveMessageCommand({
 				QueueUrl: this.config.url,
 				...fallbackParams,
 				MaxNumberOfMessages: Math.min(quantity, 10)
 			})
-			.promise();
+		);
 
 		if (this.config.logger) this.config.logger.info({ result });
 
@@ -74,9 +73,9 @@ export class Queue<Body extends object> {
 	};
 
 	purge = async () =>
-		this.sqs
-			.purgeQueue({
+		this.client.send(
+			new PurgeQueueCommand({
 				QueueUrl: this.config.url
 			})
-			.promise();
+		);
 }

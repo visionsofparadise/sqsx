@@ -1,3 +1,4 @@
+import { ReceiveMessageCommand, SendMessageCommand } from '@aws-sdk/client-sqs';
 import { QueueMessage } from './QueueMessage';
 import { sqs, testQueue, newTestMessage } from './testQueue.dev';
 
@@ -8,18 +9,18 @@ afterEach(async () => {
 it('deletes a queue message', async () => {
 	const testMessage = newTestMessage();
 
-	await sqs
-		.sendMessage({
+	await sqs.send(
+		new SendMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MessageBody: JSON.stringify(testMessage)
 		})
-		.promise();
+	);
 
-	const results = await sqs
-		.receiveMessage({
+	const results = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url
 		})
-		.promise();
+	);
 
 	expect(results.Messages).toBeDefined();
 
@@ -31,11 +32,11 @@ it('deletes a queue message', async () => {
 
 	await queueMessage.delete();
 
-	const results2 = await sqs
-		.receiveMessage({
+	const results2 = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url
 		})
-		.promise();
+	);
 
 	expect(results2.Messages).not.toBeDefined();
 });
@@ -43,19 +44,19 @@ it('deletes a queue message', async () => {
 it('sends same message again', async () => {
 	const testMessage = newTestMessage();
 
-	await sqs
-		.sendMessage({
+	await sqs.send(
+		new SendMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MessageBody: JSON.stringify(testMessage)
 		})
-		.promise();
+	);
 
-	const results = await sqs
-		.receiveMessage({
+	const results = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MaxNumberOfMessages: 10
 		})
-		.promise();
+	);
 
 	expect(results.Messages).toBeDefined();
 
@@ -67,12 +68,12 @@ it('sends same message again', async () => {
 
 	await queueMessage.send();
 
-	const results2 = await sqs
-		.receiveMessage({
+	const results2 = await sqs.send(
+		new ReceiveMessageCommand({
 			QueueUrl: testQueue.config.url,
 			MaxNumberOfMessages: 10
 		})
-		.promise();
+	);
 
 	expect(results2.Messages!.length).toBe(2);
 });
