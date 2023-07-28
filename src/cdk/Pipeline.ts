@@ -43,14 +43,15 @@ export class SQSXPipelineStack extends Stack {
 		const testingPolicyStatement = new PolicyStatement({
 			effect: Effect.ALLOW,
 			resources: ['*'],
-			actions: ['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:DeleteMessage']
+			actions: ['sqs:SendMessage', 'sqs:ReceiveMessage', 'sqs:DeleteMessage', 'sqs:PurgeQueue']
 		});
 
 		const integrationTestStep = new CodeBuildStep('integrationTest', {
 			commands: ['npm ci', 'export INTEGRATION_TEST=true', 'npm run test'],
 			rolePolicyStatements: [testingPolicyStatement],
 			envFromCfnOutputs: {
-				QUEUE_URL: testApp.queueUrl
+				QUEUE_URL: testApp.queueUrl,
+				PURGE_QUEUE_URL: testApp.purgeQueueUrl
 			}
 		});
 

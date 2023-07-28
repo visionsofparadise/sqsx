@@ -4,6 +4,7 @@ import { Construct } from 'constructs';
 
 export class SQSXStack extends Stack {
 	public readonly queueUrl: CfnOutput;
+	public readonly purgeQueueUrl: CfnOutput;
 
 	constructor(scope: Construct, id: string, props: StackProps & { stage: string; deploymentName: string }) {
 		super(scope, id, props);
@@ -15,6 +16,15 @@ export class SQSXStack extends Stack {
 		this.queueUrl = new CfnOutput(this, `${props.deploymentName}-queueUrl`, {
 			value: queue.queueUrl,
 			exportName: `${props.deploymentName}-queueUrl`
+		});
+
+		const purgeQueue = new Queue(this, 'purgeQueue', {
+			queueName: `${props.deploymentName}-purgeQueue`
+		});
+
+		this.purgeQueueUrl = new CfnOutput(this, `${props.deploymentName}-purgeQueueUrl`, {
+			value: purgeQueue.queueUrl,
+			exportName: `${props.deploymentName}-purgeQueueUrl`
 		});
 	}
 }

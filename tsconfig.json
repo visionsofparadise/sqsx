@@ -1,10 +1,9 @@
 {
 	"compilerOptions": {
 		"module": "commonjs",
-		"target": "ES2018",
-		"lib": ["ES2019", "DOM"],
+		"target": "es2015",
+		"lib": ["es2015"],
 		"strict": true,
-		"declaration": true,
 		"moduleResolution": "node",
 		"rootDir": "src",
 		"outDir": "dist",
@@ -21,6 +20,7 @@
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
 		"noImplicitReturns": true,
+		"useUnknownInCatchVariables": true,
 		"noFallthroughCasesInSwitch": true,
 		"resolveJsonModule": true,
 		"allowJs": true,
@@ -35,5 +35,5 @@
 		]
 	},
 	"include": ["src/**/*.ts"],
-	"exclude": ["dist/*", "src/**/*.test.ts", "node_modules"]
+	"exclude": ["dist-cjs/*", "dist-es/*", "dist-types/*", "node_modules"]
 }

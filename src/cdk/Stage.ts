@@ -5,6 +5,7 @@ import { SQSXStack } from './Stack';
 
 export class SQSXStage extends Stage {
 	public readonly queueUrl: CfnOutput;
+	public readonly purgeQueueUrl: CfnOutput;
 
 	constructor(scope: Construct, id: string, props: StageProps & { stage: string }) {
 		super(scope, id, props);
@@ -21,5 +22,6 @@ export class SQSXStage extends Stage {
 		});
 
 		this.queueUrl = stack.queueUrl;
+		this.purgeQueueUrl = stack.purgeQueueUrl;
 	}
 }
